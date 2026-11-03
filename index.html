@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Registro digital de asistencia a formación · Primadera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ CONFIGURACIÓN ============ */
+  /* Paleta: rojo Primadera (canto), carbón para texto, grafito de marca,
+     superficie melamina blanca sobre gris de planta, roble como acento. */
+  :root {
+    --rojo: #9C1519;
+    --rojo-hondo: #7A0F12;
+    --carbon: #2A2623;
+    --grafito: #605F5F;
+    --planta: #E9EAE6;
+    --melamina: #FFFFFF;
+    --linea: #D6D7D2;
+    --roble: #B98D5E;
+    --verde: #2F7A4C;
+    --verde-suave: #E8F3EC;
+    --ambar: #8A5A00;
+    --ambar-suave: #FFF4DC;
+    --error-suave: #FBEAEA;
+    --radio: 6px;
+    --fuente: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: var(--fuente);
+    font-size: 17px;
+    line-height: 1.45;
+    color: var(--carbon);
+    background: var(--planta);
+    min-height: 100vh;
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* La hoja: un tablero de melamina con su canto rojo a la izquierda */
+  .hoja {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--melamina);
+    border-left: 8px solid var(--rojo);
+    display: flex;
+    flex-direction: column;
+  }
+
+  header.marca {
+    padding: 20px 22px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .marca .nombre { font-weight: 700; font-size: 1.05rem; letter-spacing: 0.06em; color: var(--rojo); }
+  .marca .doc { font-size: 0.82rem; color: var(--grafito); text-align: right; }
+
+  /* Progreso como capas de un tablero: cada paso completado es una lámina */
+  .capas { padding: 0 22px 6px; }
+  .capas ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+  .capas li {
+    height: 7px;
+    border-radius: 2px;
+    background: var(--linea);
+    transition: background 0.35s ease, transform 0.35s ease;
+    transform-origin: left center;
+  }
+  .capas li.hecha { background: var(--rojo); }
+  .capas li.actual { background: var(--roble); }
+  .capas .texto { margin-top: 8px; font-size: 0.85rem; color: var(--grafito); }
+
+  main { flex: 1; padding: 10px 22px 28px; }
+
+  .paso { display: none; }
+  .paso.visible { display: block; animation: entra 0.3s ease; }
+  @keyframes entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  h1 { font-size: 1.6rem; line-height: 1.2; font-weight: 600; margin: 8px 0 6px; }
+  h2 { font-size: 1.3rem; line-height: 1.25; font-weight: 600; margin: 8px 0 4px; }
+  p.guia { color: var(--grafito); margin: 0 0 18px; }
+
+  /* Ficha de la sesión */
+  .ficha { border: 1px solid var(--linea); border-radius: var(--radio); margin: 18px 0 22px; }
+  .ficha .fila { display: flex; justify-content: space-between; gap: 16px; padding: 12px 14px; }
+  .ficha .fila + .fila { border-top: 1px solid var(--linea); }
+  .ficha dt { color: var(--grafito); font-size: 0.9rem; }
+  .ficha dd { margin: 0; font-weight: 600; text-align: right; }
+
+  /* Campos */
+  .campo { margin-bottom: 16px; }
+  label.etq { display: block; font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
+  input[type=text], select {
+    width: 100%;
+    min-height: 52px;
+    padding: 12px 14px;
+    font: inherit;
+    color: var(--carbon);
+    background: var(--melamina);
+    border: 1.5px solid var(--linea);
+    border-radius: var(--radio);
+    appearance: none;
+  }
+  select {
+    background-image: linear-gradient(45deg, transparent 50%, var(--grafito) 50%), linear-gradient(135deg, var(--grafito) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%;
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 40px;
+  }
+  select:disabled { background-color: #F3F3F1; color: #9A9896; }
+  input:focus, select:focus { outline: none; border-color: var(--rojo); box-shadow: 0 0 0 3px rgba(156,21,25,0.15); }
+  .campo.malo input, .campo.malo select { border-color: var(--rojo); }
+  .aviso-campo { display: none; color: var(--rojo); font-size: 0.85rem; margin-top: 4px; }
+  .campo.malo .aviso-campo { display: block; }
+
+  /* Satisfacción */
+  .caras { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0 4px; }
+  .cara {
+    min-height: 60px;
+    font-size: 1.9rem;
+    border: 1.5px solid var(--linea);
+    border-radius: var(--radio);
+    background: var(--melamina);
+    cursor: pointer;
+    filter: grayscale(1);
+    opacity: 0.65;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .cara[aria-pressed="true"] { filter: none; opacity: 1; border-color: var(--rojo); border-width: 2px; transform: scale(1.06); }
+  .extremos { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--grafito); margin-bottom: 22px; }
+
+  /* Efectividad: escalera de 4 niveles */
+  .niveles { display: grid; gap: 8px; margin-top: 4px; }
+  .nivel {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 54px; padding: 10px 14px;
+    font: inherit; font-weight: 500; text-align: left; color: var(--carbon);
+    background: var(--melamina);
+    border: 1.5px solid var(--linea);
+    border-radius: var(--radio);
+    cursor: pointer;
+  }
+  .nivel .barras { display: inline-flex; gap: 3px; align-items: flex-end; flex: none; }
+  .nivel .barras i { display: block; width: 5px; background: var(--linea); border-radius: 1px; }
+  .nivel .barras i:nth-child(1) { height: 8px; }
+  .nivel .barras i:nth-child(2) { height: 13px; }
+  .nivel .barras i:nth-child(3) { height: 18px; }
+  .nivel .barras i:nth-child(4) { height: 23px; }
+  .nivel .barras i.on { background: var(--roble); }
+  .nivel[aria-pressed="true"] { border-color: var(--rojo); border-width: 2px; background: #FCF6F6; }
+  .nivel[aria-pressed="true"] .barras i.on { background: var(--rojo); }
+
+  .confidencial { font-size: 0.85rem; color: var(--grafito); background: #F5F5F3; border-radius: var(--radio); padding: 10px 12px; margin: 22px 0 0; }
+
+  /* Firma */
+  .lienzo {
+    position: relative;
+    border: 1.5px dashed var(--grafito);
+    border-radius: var(--radio);
+    background: var(--melamina);
+    height: 200px;
+    touch-action: none;
+  }
+  .lienzo canvas { width: 100%; height: 100%; display: block; border-radius: var(--radio); }
+  .lienzo .linea-firma { position: absolute; left: 18px; right: 18px; bottom: 48px; border-bottom: 1px solid var(--linea); pointer-events: none; }
+  .lienzo .pista { position: absolute; left: 0; right: 0; bottom: 20px; text-align: center; font-size: 0.85rem; color: #9A9896; pointer-events: none; }
+  .lienzo.firmado .pista { display: none; }
+  .bajo-lienzo { display: flex; justify-content: flex-end; margin-top: 6px; }
+
+  .datos-texto { font-size: 0.85rem; color: var(--grafito); margin: 18px 0 12px; }
+  .declara {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px; border: 1.5px solid var(--linea); border-radius: var(--radio); cursor: pointer;
+  }
+  .declara input { width: 24px; height: 24px; margin: 1px 0 0; accent-color: var(--rojo); flex: none; }
+  .declara.malo { border-color: var(--rojo); }
+
+  /* Botones */
+  .acciones { display: grid; gap: 10px; margin-top: 26px; }
+  .btn {
+    min-height: 56px; padding: 14px 18px;
+    font: inherit; font-weight: 600; font-size: 1.05rem;
+    border-radius: var(--radio); border: none; cursor: pointer;
+  }
+  .btn-principal { background: var(--rojo); color: #fff; }
+  .btn-principal:active { background: var(--rojo-hondo); }
+  .btn-principal:disabled { opacity: 0.55; cursor: progress; }
+  .btn-secundario { background: transparent; color: var(--carbon); border: 1.5px solid var(--linea); }
+  .btn-texto { background: none; border: none; color: var(--rojo); font: inherit; font-weight: 600; padding: 8px 4px; cursor: pointer; }
+  .btn:focus-visible, .cara:focus-visible, .nivel:focus-visible, .btn-texto:focus-visible { outline: 3px solid var(--roble); outline-offset: 2px; }
+
+  .error-general { display: none; background: var(--error-suave); color: var(--rojo-hondo); border-radius: var(--radio); padding: 12px 14px; margin-top: 16px; font-size: 0.95rem; }
+  .error-general.visible { display: block; }
+
+  /* Resultado */
+  .sello { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; font-size: 2rem; margin: 26px 0 14px; }
+  .sello.ok { background: var(--verde-suave); color: var(--verde); }
+  .sello.info { background: var(--ambar-suave); color: var(--ambar); }
+  .sello.mal { background: var(--error-suave); color: var(--rojo); }
+
+  footer { padding: 14px 22px 22px; font-size: 0.78rem; color: #8B8986; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="hoja">
+  <header class="marca">
+    <span class="nombre">PRIMADERA</span>
+    <span class="doc">Registro digital de asistencia a formación</span>
+  </header>
+
+  <div class="capas" id="capas" aria-hidden="true">
+    <ol><li></li><li></li><li></li><li></li></ol>
+    <div class="texto" id="capasTexto"></div>
+  </div>
+
+  <main>
+    <!-- SIN CÓDIGO DE SESIÓN -->
+    <section class="paso" id="pasoSinSesion">
+      <h1>Escanea el código de tu facilitador</h1>
+      <p class="guia">Este registro solo se abre desde el código QR que muestra el facilitador durante la formación. Pídele que te lo muestre y escanéalo con la cámara de tu celular.</p>
+    </section>
+
+    <!-- PASO 1: BIENVENIDA -->
+    <section class="paso" id="paso1">
+      <h1 id="temaTitulo">Formación</h1>
+      <p class="guia">Confirma que esta es la formación en la que estás.</p>
+      <dl class="ficha">
+        <div class="fila"><dt>Facilitador</dt><dd id="fichaFacilitador">—</dd></div>
+        <div class="fila"><dt>Fecha</dt><dd id="fichaFecha">—</dd></div>
+      </dl>
+      <div class="acciones">
+        <button class="btn btn-principal" type="button" onclick="irA(2)">Empezar registro</button>
+      </div>
+    </section>
+
+    <!-- PASO 2: TUS DATOS -->
+    <section class="paso" id="paso2">
+      <h2>Tus datos</h2>
+      <p class="guia">Escríbelos como aparecen en tu documento.</p>
+
+      <div class="campo" id="cNombre">
+        <label class="etq" for="nombre">Nombre completo</label>
+        <input type="text" id="nombre" autocomplete="name" maxlength="150">
+        <div class="aviso-campo">Escribe tu nombre completo.</div>
+      </div>
+      <div class="campo" id="cCedula">
+        <label class="etq" for="cedula">Cédula</label>
+        <input type="text" id="cedula" inputmode="numeric" maxlength="15" autocomplete="off">
+        <div class="aviso-campo">Escribe solo números, sin puntos ni espacios.</div>
+      </div>
+      <div class="campo" id="cCargo">
+        <label class="etq" for="cargo">Cargo</label>
+        <input type="text" id="cargo" maxlength="100">
+        <div class="aviso-campo">Escribe tu cargo.</div>
+      </div>
+      <div class="campo" id="cArea">
+        <label class="etq" for="area">Área</label>
+        <select id="area" onchange="cargarSubareas()">
+          <option value="">Selecciona tu área</option>
+        </select>
+        <div class="aviso-campo">Selecciona tu área.</div>
+      </div>
+      <div class="campo" id="cSubarea">
+        <label class="etq" for="subarea">Sub-área o línea</label>
+        <select id="subarea" disabled>
+          <option value="">Primero selecciona el área</option>
+        </select>
+        <div class="aviso-campo">Selecciona tu sub-área o línea.</div>
+      </div>
+
+      <div class="acciones">
+        <button class="btn btn-principal" type="button" onclick="validarDatos()">Continuar</button>
+        <button class="btn btn-secundario" type="button" onclick="irA(1)">Volver</button>
+      </div>
+    </section>
+
+    <!-- PASO 3: TU OPINIÓN -->
+    <section class="paso" id="paso3">
+      <h2>Tu opinión</h2>
+      <p class="guia">¿Cómo fue tu experiencia? Piensa en la metodología, el facilitador y el espacio.</p>
+      <div class="caras" id="caras" role="group" aria-label="Satisfacción de 1 a 5">
+        <button type="button" class="cara" data-v="1" aria-pressed="false" aria-label="1, muy mala">😞</button>
+        <button type="button" class="cara" data-v="2" aria-pressed="false" aria-label="2, mala">😐</button>
+        <button type="button" class="cara" data-v="3" aria-pressed="false" aria-label="3, aceptable">🙂</button>
+        <button type="button" class="cara" data-v="4" aria-pressed="false" aria-label="4, buena">😊</button>
+        <button type="button" class="cara" data-v="5" aria-pressed="false" aria-label="5, excelente">🤩</button>
+      </div>
+      <div class="extremos"><span>Muy mala</span><span>Excelente</span></div>
+
+      <label class="etq">¿Qué tan preparado te sientes para aplicar lo aprendido?</label>
+      <div class="niveles" id="niveles" role="group" aria-label="Preparación para aplicar">
+        <button type="button" class="nivel" data-v="1" aria-pressed="false"><span class="barras"><i class="on"></i><i></i><i></i><i></i></span>Aún no me siento preparado</button>
+        <button type="button" class="nivel" data-v="2" aria-pressed="false"><span class="barras"><i class="on"></i><i class="on"></i><i></i><i></i></span>Necesito apoyo para aplicarlo</button>
+        <button type="button" class="nivel" data-v="3" aria-pressed="false"><span class="barras"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>Puedo aplicarlo con supervisión</button>
+        <button type="button" class="nivel" data-v="4" aria-pressed="false"><span class="barras"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>Puedo aplicarlo de forma autónoma</button>
+      </div>
+
+      <p class="confidencial">Tus respuestas en este paso son confidenciales para Gestión Humana. El facilitador no las ve.</p>
+      <div class="error-general" id="errOpinion">Marca una carita y tu nivel de preparación para continuar.</div>
+
+      <div class="acciones">
+        <button class="btn btn-principal" type="button" onclick="validarOpinion()">Continuar</button>
+        <button class="btn btn-secundario" type="button" onclick="irA(2)">Volver</button>
+      </div>
+    </section>
+
+    <!-- PASO 4: FIRMA -->
+    <section class="paso" id="paso4">
+      <h2>Firma tu asistencia</h2>
+      <p class="guia">Firma con el dedo dentro del recuadro.</p>
+
+      <div class="lienzo" id="lienzo">
+        <canvas id="firma" aria-label="Recuadro para firmar"></canvas>
+        <div class="linea-firma"></div>
+        <div class="pista">Firma aquí</div>
+      </div>
+      <div class="bajo-lienzo"><button type="button" class="btn-texto" onclick="borrarFirma()">Borrar firma</button></div>
+
+      <p class="datos-texto">Primadera S.A.S. usará tu nombre, cédula, cargo, área y firma solo para registrar tu asistencia a esta formación, conforme a su política de tratamiento de datos personales. Puedes consultar o corregir tus datos con Gestión Humana.</p>
+
+      <label class="declara" id="cajaDeclara">
+        <input type="checkbox" id="declaracion">
+        <span>Declaro que asistí a esta formación y autorizo el tratamiento de mis datos para este registro.</span>
+      </label>
+
+      <div class="error-general" id="errFirma"></div>
+
+      <div class="acciones">
+        <button class="btn btn-principal" type="button" id="btnEnviar" onclick="enviar()">Enviar registro</button>
+        <button class="btn btn-secundario" type="button" onclick="irA(3)">Volver</button>
+      </div>
+    </section>
+
+    <!-- PASO 5: RESULTADO -->
+    <section class="paso" id="paso5">
+      <div class="sello" id="sello">✓</div>
+      <h1 id="resTitulo">Registro guardado</h1>
+      <p class="guia" id="resTexto"></p>
+      <div class="acciones" id="resAcciones"></div>
+    </section>
+  </main>
+
+  <footer>Gestión Humana · Primadera S.A.S.</footer>
+</div>
+
+<script>
+  /* ============ CONFIGURACIÓN ============ */
+  // Pega aquí la URL del disparador HTTP del flujo "FL1 - Registro Formación".
+  const FLOW_URL = 'https://defaultdecef567e05041b8aa8b4dbaa95c2a.50.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/26/workflows/54a07c9984ce4319b0abd7a4a17b22f5/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=cht33BV1Gmq_TJwN-llKWZV-ZNGd6TxZ_WJaLUYWk78';
+
+  const SUBAREAS = {
+    "Gestión Humana": ["Gestión Humana"],
+    "Supply Chain": ["Logística y Almacen", "SAC", "Planeación", "Supply Chain"],
+    "Financiera": ["Compras y Comex", "Contabilidad/Impuestos", "Control Interno", "Planeación Financiera/Costos", "Tesoreria/Cartera", "TI", "Financiera"],
+    "EHS": ["EHS"],
+    "Mantenimiento": ["Eléctrico", "Mecanico", "Proyectos", "Administrativo"],
+    "Lignus": ["Silvicultura", "Cosechas", "Administrativo"],
+    "Técnica": ["Técnica"],
+    "Comercial & Mercadeo": ["Comercial", "Mercadeo"],
+    "Producción": ["Vecoplan", "Hacker", "Cargador", "Molinos", "Afilado", "Secador", "Cocinas", "Ferrocontrol SHS", "Contiroll", "Finalizado", "Laminado 1", "Laminado 2", "Administrativo"]
+  };
+
+  /* ============ SESIÓN DESDE EL QR ============ */
+  // El QR abre: index.html?s=CODIGO&t=Tema&f=Facilitador
+  // Tema y facilitador son solo para mostrar: el flujo los toma de SharePoint.
+  const params = new URLSearchParams(location.search);
+  const sesion = {
+    codigo: (params.get('s') || '').trim(),
+    tema: (params.get('t') || '').trim(),
+    facilitador: (params.get('f') || '').trim()
+  };
+
+  let satisfaccion = null;
+  let efectividad = null;
+  let pasoActual = 0;
+
+  const NOMBRES_PASO = ['', 'Formación', 'Tus datos', 'Tu opinión', 'Firma'];
+
+  function irA(n) {
+    document.querySelectorAll('.paso').forEach(p => p.classList.remove('visible'));
+    const id = n === 0 ? 'pasoSinSesion' : 'paso' + n;
+    document.getElementById(id).classList.add('visible');
+    pasoActual = n;
+    pintarCapas(n);
+    window.scrollTo({ top: 0 });
+    if (n === 4) requestAnimationFrame(prepararLienzo);
+  }
+
+  function pintarCapas(n) {
+    const capas = document.getElementById('capas');
+    if (n === 0) { capas.style.display = 'none'; return; }
+    capas.style.display = '';
+    const lis = capas.querySelectorAll('li');
+    lis.forEach((li, i) => {
+      li.className = '';
+      if (n === 5 || i + 1 < n) li.classList.add('hecha');
+      else if (i + 1 === n) li.classList.add('actual');
+    });
+    document.getElementById('capasTexto').textContent =
+      n === 5 ? 'Registro completo' : `Paso ${n} de 4: ${NOMBRES_PASO[n]}`;
+  }
+
+  /* ============ PASO 1 ============ */
+  function iniciar() {
+    const areaSel = document.getElementById('area');
+    Object.keys(SUBAREAS).forEach(a => {
+      const o = document.createElement('option'); o.value = a; o.textContent = a; areaSel.appendChild(o);
+    });
+
+    if (sesion.codigo.length !== 8) { irA(0); return; }
+
+    document.getElementById('temaTitulo').textContent = sesion.tema || 'Formación';
+    document.getElementById('fichaFacilitador').textContent = sesion.facilitador || '—';
+    document.getElementById('fichaFecha').textContent =
+      new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+    irA(1);
+  }
+
+  /* ============ PASO 2 ============ */
+  function cargarSubareas() {
+    const area = document.getElementById('area').value;
+    const sub = document.getElementById('subarea');
+    sub.innerHTML = '';
+    if (!area) {
+      sub.disabled = true;
+      sub.innerHTML = '<option value="">Primero selecciona el área</option>';
+      return;
+    }
+    sub.disabled = false;
+    const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'Selecciona tu sub-área o línea'; sub.appendChild(o0);
+    SUBAREAS[area].forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sub.appendChild(o); });
+  }
+
+  // Quita caracteres que el flujo rechaza: < > y símbolos de fórmula al inicio.
+  function limpiar(t) {
+    return t.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().replace(/^[=+\-@\s]+/, '');
+  }
+
+  function marcar(id, malo) { document.getElementById(id).classList.toggle('malo', malo); }
+
+  function validarDatos() {
+    const nombre = limpiar(document.getElementById('nombre').value);
+    const cedula = document.getElementById('cedula').value.replace(/\D/g, '');
+    const cargo = limpiar(document.getElementById('cargo').value);
+    const area = document.getElementById('area').value;
+    const subarea = document.getElementById('subarea').value;
+
+    document.getElementById('nombre').value = nombre;
+    document.getElementById('cedula').value = cedula;
+    document.getElementById('cargo').value = cargo;
+
+    const errores = {
+      cNombre: nombre.length < 3,
+      cCedula: cedula.length < 5 || cedula.length > 15,
+      cCargo: cargo.length < 2,
+      cArea: !area,
+      cSubarea: !subarea
+    };
+    Object.entries(errores).forEach(([id, malo]) => marcar(id, malo));
+    const primero = Object.keys(errores).find(k => errores[k]);
+    if (primero) { document.querySelector('#' + primero + ' input, #' + primero + ' select').focus(); return; }
+    irA(3);
+  }
+
+  /* ============ PASO 3 ============ */
+  function seleccionUnica(contenedorId, alElegir) {
+    document.querySelectorAll('#' + contenedorId + ' button').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('#' + contenedorId + ' button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+        b.setAttribute('aria-pressed', 'true');
+        alElegir(parseInt(b.dataset.v, 10));
+        document.getElementById('errOpinion').classList.remove('visible');
+      });
+    });
+  }
+  seleccionUnica('caras', v => satisfaccion = v);
+  seleccionUnica('niveles', v => efectividad = v);
+
+  function validarOpinion() {
+    if (!satisfaccion || !efectividad) { document.getElementById('errOpinion').classList.add('visible'); return; }
+    irA(4);
+  }
+
+  /* ============ PASO 4: FIRMA ============ */
+  const canvas = document.getElementById('firma');
+  const ctx = canvas.getContext('2d');
+  let dibujando = false, ultimo = null, trazos = 0;
+  let caja = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  let lienzoListo = false;
+
+  function prepararLienzo() {
+    if (lienzoListo) return;
+    const r = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1F1C1A';
+    lienzoListo = true;
+  }
+
+  function punto(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  canvas.addEventListener('pointerdown', e => {
+    prepararLienzo();
+    canvas.setPointerCapture(e.pointerId);
+    dibujando = true; ultimo = punto(e);
+    ctx.beginPath(); ctx.arc(ultimo.x, ultimo.y, 1.2, 0, Math.PI * 2); ctx.fillStyle = '#1F1C1A'; ctx.fill();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!dibujando) return;
+    const p = punto(e);
+    ctx.beginPath(); ctx.moveTo(ultimo.x, ultimo.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+    ultimo = p; trazos++;
+    caja.minX = Math.min(caja.minX, p.x); caja.maxX = Math.max(caja.maxX, p.x);
+    caja.minY = Math.min(caja.minY, p.y); caja.maxY = Math.max(caja.maxY, p.y);
+    document.getElementById('lienzo').classList.add('firmado');
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => canvas.addEventListener(ev, () => dibujando = false));
+
+  function borrarFirma() {
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore();
+    trazos = 0; caja = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    document.getElementById('lienzo').classList.remove('firmado');
+  }
+
+  function firmaValida() {
+    // Exige un trazo real: suficientes movimientos y un tamaño mínimo (no un punto).
+    return trazos > 15 && (caja.maxX - caja.minX) > 40 && (caja.maxY - caja.minY) > 10;
+  }
+
+  function exportarFirma() {
+    // Se exporta a máximo 600 px de ancho, fondo blanco, para que pese poco.
+    const r = canvas.getBoundingClientRect();
+    const escala = Math.min(1, 600 / r.width);
+    const out = document.createElement('canvas');
+    out.width = Math.round(r.width * escala);
+    out.height = Math.round(r.height * escala);
+    const o = out.getContext('2d');
+    o.fillStyle = '#FFFFFF'; o.fillRect(0, 0, out.width, out.height);
+    o.drawImage(canvas, 0, 0, out.width, out.height);
+    return out.toDataURL('image/png');
+  }
+
+  /* ============ ENVÍO ============ */
+  function mostrarErrorFirma(msg) {
+    const e = document.getElementById('errFirma'); e.textContent = msg; e.classList.add('visible');
+  }
+
+  async function enviar() {
+    document.getElementById('errFirma').classList.remove('visible');
+    const declara = document.getElementById('declaracion').checked;
+    document.getElementById('cajaDeclara').classList.toggle('malo', !declara);
+
+    if (!firmaValida()) { mostrarErrorFirma('Firma dentro del recuadro antes de enviar.'); return; }
+    if (!declara) { mostrarErrorFirma('Marca la declaración de asistencia para enviar.'); return; }
+
+    const payload = {
+      codigo: sesion.codigo,
+      cedula: document.getElementById('cedula').value,
+      nombre: document.getElementById('nombre').value,
+      cargo: document.getElementById('cargo').value,
+      area: document.getElementById('area').value,
+      subarea: document.getElementById('subarea').value,
+      satisfaccion: satisfaccion,
+      efectividad: efectividad,
+      declaracion: true,
+      firma: exportarFirma()
+    };
+
+    const btn = document.getElementById('btnEnviar');
+    btn.disabled = true; btn.textContent = 'Enviando…';
+
+    try {
+      const resp = await fetch(FLOW_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      let datos = {};
+      try { datos = await resp.json(); } catch (_) {}
+
+      if (resp.status === 200 && datos.ok) {
+        resultado('ok', 'Registro guardado', `${datos.nombre}, quedó registrada tu asistencia a ${datos.tema}.`, true);
+      } else if (resp.status === 409) {
+        resultado('info', 'Ya estabas registrado', 'Tu asistencia a esta formación ya había quedado guardada. No necesitas enviarla de nuevo.', true);
+      } else if (resp.status === 404) {
+        resultado('mal', 'Esta sesión ya no recibe registros', 'El código venció o la sesión se cerró. Pide al facilitador que te muestre un código vigente.', false);
+      } else if (resp.status === 400) {
+        mostrarErrorFirma(datos.mensaje || 'Hay datos incompletos. Revisa tus datos e intenta de nuevo.');
+        restaurarBoton();
+      } else {
+        throw new Error('estado ' + resp.status);
+      }
+    } catch (err) {
+      mostrarErrorFirma('No se pudo enviar. Revisa la señal o el wifi y toca "Enviar registro" de nuevo; tus datos siguen aquí.');
+      restaurarBoton();
+    }
+  }
+
+  function restaurarBoton() {
+    const btn = document.getElementById('btnEnviar');
+    btn.disabled = false; btn.textContent = 'Enviar registro';
+  }
+
+  function resultado(tipo, titulo, texto, permitirOtro) {
+    const sello = document.getElementById('sello');
+    sello.className = 'sello ' + tipo;
+    sello.textContent = tipo === 'ok' ? '✓' : (tipo === 'info' ? 'i' : '!');
+    document.getElementById('resTitulo').textContent = titulo;
+    document.getElementById('resTexto').textContent = texto;
+    const acc = document.getElementById('resAcciones');
+    acc.innerHTML = '';
+    if (permitirOtro) {
+      const b = document.createElement('button');
+      b.className = 'btn btn-secundario'; b.type = 'button'; b.textContent = 'Registrar a otra persona en este celular';
+      b.onclick = reiniciarParaOtro;
+      acc.appendChild(b);
+    }
+    irA(5);
+  }
+
+  function reiniciarParaOtro() {
+    ['nombre', 'cedula', 'cargo'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('area').value = ''; cargarSubareas();
+    document.querySelectorAll('.cara, .nivel').forEach(b => b.setAttribute('aria-pressed', 'false'));
+    satisfaccion = null; efectividad = null;
+    document.getElementById('declaracion').checked = false;
+    document.getElementById('cajaDeclara').classList.remove('malo');
+    borrarFirma(); restaurarBoton();
+    document.querySelectorAll('.campo').forEach(c => c.classList.remove('malo'));
+    irA(2);
+  }
+
+  iniciar();
+</script>
+</body>
+</html>
