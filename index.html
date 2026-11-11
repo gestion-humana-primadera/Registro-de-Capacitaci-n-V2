@@ -449,12 +449,22 @@
     return t.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().replace(/^[=+\-@\s]+/, '');
   }
 
+  // Nombre: cada palabra con mayúscula inicial (las partículas de, del, la, las, los, y van en minúscula).
+  function nombrePropio(t) {
+    const menores = ['de', 'del', 'la', 'las', 'los', 'y'];
+    return t.toLowerCase().split(' ').map((p, i) =>
+      (i > 0 && menores.includes(p)) ? p : p.charAt(0).toUpperCase() + p.slice(1)
+    ).join(' ');
+  }
+  // Cargo: solo la primera letra en mayúscula; el resto se respeta (así "HRBP" no se daña).
+  function primeraMayuscula(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+
   function marcar(id, malo) { document.getElementById(id).classList.toggle('malo', malo); }
 
   function validarDatos() {
-    const nombre = limpiar(document.getElementById('nombre').value);
+    const nombre = nombrePropio(limpiar(document.getElementById('nombre').value));
     const cedula = document.getElementById('cedula').value.replace(/\D/g, '');
-    const cargo = limpiar(document.getElementById('cargo').value);
+    const cargo = primeraMayuscula(limpiar(document.getElementById('cargo').value));
     const area = document.getElementById('area').value;
     const subarea = document.getElementById('subarea').value;
 
