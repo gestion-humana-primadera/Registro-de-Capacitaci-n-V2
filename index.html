@@ -230,7 +230,16 @@
     <!-- SIN CÓDIGO DE SESIÓN -->
     <section class="paso" id="pasoSinSesion">
       <h1>Escanea el código de tu facilitador</h1>
-      <p class="guia">Este registro solo se abre desde el código QR que muestra el facilitador durante la formación. Pídele que te lo muestre y escanéalo con la cámara de tu celular.</p>
+      <p class="guia">Este registro se abre desde el código QR que muestra el facilitador durante la formación. Escanéalo con la cámara de tu celular.</p>
+
+      <div class="campo" id="cCodigo">
+        <label class="etq" for="codigoManual">¿No puedes escanear? Escribe el código de la sesión</label>
+        <input type="text" id="codigoManual" maxlength="16" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej.: K7MP3RXQ" style="text-transform:uppercase;letter-spacing:0.12em;">
+        <div class="aviso-campo">El código tiene 8 caracteres. Pídeselo al facilitador.</div>
+      </div>
+      <div class="acciones">
+        <button class="btn btn-principal" type="button" onclick="entrarConCodigo()">Continuar</button>
+      </div>
     </section>
 
     <!-- PASO 1: BIENVENIDA -->
@@ -424,6 +433,22 @@
 
     document.getElementById('temaTitulo').textContent = sesion.tema || 'Formación';
     document.getElementById('fichaFacilitador').textContent = sesion.facilitador || '—';
+    document.getElementById('fichaFecha').textContent =
+      new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+    irA(1);
+  }
+
+  // Plan B: el operario escribe el código que el facilitador muestra en la app.
+  function entrarConCodigo() {
+    const c = document.getElementById('codigoManual').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const valido = /^[A-Z0-9]{8}$/.test(c);
+    marcar('cCodigo', !valido);
+    if (!valido) { document.getElementById('codigoManual').focus(); return; }
+    sesion.codigo = c;
+    sesion.tema = '';
+    sesion.facilitador = '';
+    document.getElementById('temaTitulo').textContent = 'Formación ' + c;
+    document.getElementById('fichaFacilitador').textContent = 'Lo confirma el sistema al enviar';
     document.getElementById('fichaFecha').textContent =
       new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
     irA(1);
